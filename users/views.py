@@ -36,7 +36,7 @@ class SignUpView(FormView):
     form_class = forms.SignUpForm
     # form_class = UserCreationForm
     success_url = reverse_lazy("core:home")
-    initial = {"first_name": "DOWON", "last_name": "LEE", "email": "dowon@nomad.com"}
+    # initial = {"first_name": "DOWON", "last_name": "LEE", "email": "dowon@nomad.com"}
 
     def form_valid(self, form):
         form.save()
