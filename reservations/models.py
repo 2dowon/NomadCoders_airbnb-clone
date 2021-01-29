@@ -1,6 +1,20 @@
+import datetime
 from django.db import models
 from django.utils import timezone
 from core import models as core_models
+
+
+class BookedDay(models.Model):
+
+    day = models.DateField()
+    reservation = models.ForeignKey("Reservation", on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name = "Booked Day"
+        verbose_name_plural = "Booked Days"
+
+    def __str__(self):
+        return str(self.day)
 
 
 class Reservation(core_models.TimeStampedModel):
@@ -43,3 +57,25 @@ class Reservation(core_models.TimeStampedModel):
         return now > self.check_out
 
     is_finished.boolean = True
+
+    def save(self, *args, **kwargs):
+        if self.pk is None:  # 새로운 예약의 경우
+            start = self.check_in
+            end = self.check_out
+            difference = end - start
+            # 체크인과 체크아웃 사이에 예약이 존재하는지를 필터로 확인
+            # existing_booked_day = BookedDay.objects.filter(
+            #     day__range=(start, end)
+            # ).exists()
+            # 다른 방을 예약할 때 날짜가 겹쳤을 때 데이터베이스에 저장이 안되는 에러 해결
+            filter_room = BookedDay.objects.filter(reservation__room=self.room)
+            existing_booked_day = filter_room.filter(day__range=(start, end)).exists()
+
+            if not existing_booked_day:  # 만약 해당 날짜에 예약이 없다면
+                super().save(*args, **kwargs)  # 예약을 저장하고
+                for i in range(difference.days + 1):  # 예약 날짜를 BookedDay로 만들기
+                    day = start + datetime.timedelta(days=i)
+                    BookedDay.objects.create(day=day, reservation=self)
+                return
+
+        return super().save(*args, **kwargs)
